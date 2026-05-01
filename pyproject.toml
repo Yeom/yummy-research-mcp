@@ -1,0 +1,29 @@
+[project]
+name = "yummy-research-mcp"
+version = "0.1.0"
+description = "MCP server for fetching domestic & foreign macro/market statistics (CNN F&G, indexergo KOSPI series, ...)."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "yeom" }]
+dependencies = [
+    "mcp>=1.2.0",
+]
+
+[project.scripts]
+yummy-research-mcp = "yummy_research_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yummy_research_mcp"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
