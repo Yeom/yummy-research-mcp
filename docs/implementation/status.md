@@ -14,7 +14,7 @@ DB·차트·수집 결과는 `state/`에 저장하며 Git에서 제외한다.
 `../yummy_research/yummy_codex/editions.py`가 MCP 수집 CLI를 호출한다.
 AM은 지표 수집·기계 계산 숫자·차트, PM은 사용자 등록 관심기업 뉴스 발견 자료를 제공한다.
 두 판 모두 핵심 흐름·새 트렌드·업종별 뉴스·다음 확인을 유지한다.
-등록 기업: 티엘비, 비나텍, 한화비전, SK텔레콤, HD현대, 브이엠.
+등록 기업 목록은 Telegram /watch와 로컬 운영 DB에서 관리한다.
 사용자 관심 이유는 미입력으로 남기며 모델이 투자 의도를 추정하지 않는다.
 
 Telegram `/watch`, `/watch add 기업명 | 테마`, `/watch remove 기업명`,

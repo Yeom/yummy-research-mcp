@@ -8,7 +8,7 @@ def test_sec_acceptance_time_not_filing_date_controls_cutoff():
 
 def test_missing_key_is_unavailable_not_empty_news(monkeypatch):
     from yummy_research_mcp.filings import get_filings
-    monkeypatch.delenv('DART_API_KEY',raising=False)
+    monkeypatch.setattr('yummy_research_mcp.filings.setting',lambda key:'')
     result=get_filings('KR','00123456','2026-09-10T00:00:00Z','2026-09-11T14:00:00Z')
     assert result['status']=='unavailable' and result['error']=='source_not_configured'
 
