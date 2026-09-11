@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import pytest
+import os
+pytestmark=pytest.mark.skipif(os.environ.get("YUMMY_LIVE_TESTS")!="1",reason="Live network test; set YUMMY_LIVE_TESTS=1")
 
 from yummy_research_mcp.sources import cnn, indexergo
 
