@@ -34,7 +34,7 @@ def utc(value):
     return d.astimezone(timezone.utc)
 
 def metric_ids(ids=None):
-    ids=list(METRICS) if ids is None else ids
+    ids=[k for k in METRICS if k not in ('brent','dollar_broad')] if ids is None else ids
     if not isinstance(ids,list) or not ids or len(ids)>20 or any(x not in METRICS for x in ids):raise ValueError('Invalid metric IDs')
     return list(dict.fromkeys(ids))
 

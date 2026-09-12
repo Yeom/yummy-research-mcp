@@ -7,7 +7,7 @@ def render(snapshot, output):
     import matplotlib
     matplotlib.use('Agg')
     from matplotlib import pyplot as plt
-    groups=[('US Treasury yields (%)',['us3y','us10y','us30y']),('Crude spot (USD/barrel)',['wti','brent'])]
+    groups=[('US Treasury yields (%)',['us3y','us10y','us30y']),('WTI spot (USD/barrel)',['wti'])]
     items={r['metric_id']:r for r in snapshot['items']}
     fig,axes=plt.subplots(2,1,figsize=(9,7),layout='constrained')
     from datetime import datetime

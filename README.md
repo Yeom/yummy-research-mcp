@@ -90,7 +90,7 @@ YUMMY_LIVE_TESTS=1 uv run pytest tests/test_fetchers.py
 `get_source_health`, `get_company_filings`, `search_company_news`.
 기존 4개 도구도 유지한다. 지표 일괄 갱신·차트 파일 작성은 운영 CLI에서 수행한다.
 
-- 미국채 3·10·30년, 실질 10년, 정책금리 상·하단/실효금리, WTI·Brent 현물, 광의 달러지수.
+- 기본 수집·브리핑: 미국채 3·10·30년, 실질 10년, 정책금리 상·하단/실효금리, WTI 현물 등 8개 지표. Brent·광의 달러지수는 정기 수집과 차트에서 제외하며 기존 이력의 명시적 조회만 지원한다.
 - 지표 SQLite: `state/market_data.db`. observations는 수정값을 수집 시각별 보관,
   snapshots는 보고서 사용 시점의 고정 결과, health는 수집 성공·실패 이력의 최신 상태.
 - 과거 날짜 값을 오늘 처음 수집했다면 오늘부터 알려진 값으로 처리한다. 완전한 과거 시점 복원이나 ALFRED 전체 빈티지 구축은 아니다.
