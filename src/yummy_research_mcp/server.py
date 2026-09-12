@@ -98,6 +98,26 @@ TOOLS: dict[str, tuple[Tool, ToolFn]] = {
 }
 
 
+# Only bounded read tools are exposed to the analyst. Scheduled collection uses the CLI.
+from .market import METRICS, MarketStore, default_db
+from .filings import get_filings, search_news
+
+def register(name, description, properties, required, fn):
+    TOOLS[name]=(Tool(name=name,description=description,inputSchema={'type':'object','properties':properties,'required':required,'additionalProperties':False}),fn)
+
+register('list_metrics','Supported official daily series and units.',{},[],lambda a:METRICS)
+register('get_market_snapshot','Read a frozen snapshot by ID, or reconstruct only observations known by as_of. No live collection.',
+    {'snapshot_id':{'type':'string'},'as_of':{'type':'string','format':'date-time'}},[],
+    lambda a:MarketStore(default_db()).get_snapshot(a['snapshot_id']) if a.get('snapshot_id') else MarketStore(default_db()).snapshot(a['as_of']))
+register('get_metric_series','Read up to 1000 observations known by as_of; historical imports do not imply earlier availability.',
+    {'metric_id':{'type':'string','enum':list(METRICS)},'as_of':{'type':'string','format':'date-time'},'limit':{'type':'integer','minimum':1,'maximum':1000}},['metric_id','as_of'],
+    lambda a:{'items':MarketStore(default_db()).series(a['metric_id'],a['as_of'],a.get('limit',60))})
+register('get_source_health','Last local collection attempts and sanitized failures.',{},[],lambda a:{'items':MarketStore(default_db()).health()})
+register('get_company_filings','Read SEC/DART filings. Missing credentials return unavailable. KR data has date-only precision.',
+    {'market':{'type':'string','enum':['US','KR']},'company_id':{'type':'string'},'since':{'type':'string','format':'date-time'},'as_of':{'type':'string','format':'date-time'}},['market','company_id','since','as_of'],lambda a:get_filings(**a))
+register('search_company_news','Discover bounded recent news headlines. Verify original article before making factual claims. Not exhaustive.',
+    {'query':{'type':'string','maxLength':150},'since':{'type':'string','format':'date-time'},'as_of':{'type':'string','format':'date-time'},'limit':{'type':'integer','minimum':1,'maximum':30}},['query','since','as_of'],lambda a:search_news(**a))
+
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     return [tool for tool, _ in TOOLS.values()]
@@ -113,10 +133,10 @@ async def call_tool(name: str, arguments: dict[str, Any] | None) -> list[TextCon
     try:
         payload = await asyncio.to_thread(fn, args)
     except Exception as e:  # noqa: BLE001 — surface any fetcher error to the model
-        log.exception("tool %s failed", name)
+        log.warning("tool %s failed: %s", name, type(e).__name__)
         return [TextContent(
             type="text",
-            text=json.dumps({"error": f"{type(e).__name__}: {e}"}, ensure_ascii=False),
+            text=json.dumps({"error": type(e).__name__}, ensure_ascii=False),
         )]
     return [TextContent(type="text", text=json.dumps(payload, ensure_ascii=False, indent=2))]
 

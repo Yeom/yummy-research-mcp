@@ -23,26 +23,23 @@ cd ~/workspace/yummy-research-mcp
 uv sync                          # 의존성 설치 (.venv 자동 생성)
 uv run yummy-research-mcp        # MCP stdio 서버 실행
 uv run python -m yummy_research_mcp.sources.cnn        # 단독 페치 디버깅
-uv run pytest                    # 라이브 엔드포인트 스모크 테스트
+uv run pytest                    # 오프라인 단위 테스트
 ```
 
-## Claude Code / Claude Desktop 등록
+## Codex 등록
 
-```json
-{
-  "mcpServers": {
-    "yummy-research": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/Users/yeom/workspace/yummy-research-mcp",
-        "run",
-        "yummy-research-mcp"
-      ]
-    }
-  }
-}
+`yummy-agent/.codex/config.toml`에 프로젝트 설정이 있다. 자동 실행하는
+`yummy_research/yummy_codex/runner.py`도 동일 서버를 명시적으로 등록한다.
+기존 Claude 플러그인 manifest는 사용하지 않는다.
+
+```toml
+[mcp_servers.yummy-research]
+command = "/Users/yeom/workspace/yummy-research-mcp/.venv/bin/python"
+args = ["-m", "yummy_research_mcp.server"]
 ```
+
+가상 환경이 없으면 먼저 이 프로젝트에서 `uv sync`로 설치한다.
+서버 도구 목록에 나타나는 것과 외부 데이터 소스가 정상 응답하는 것은 별도로 검증한다.
 
 ## 새 데이터 소스 추가
 
@@ -68,3 +65,40 @@ tests/
 
 - **CNN F&G**: `production.dataviz.cnn.io/index/fearandgreed/graphdata` JSON API. 브라우저 UA + `Origin: edition.cnn.com` + `Referer` 필수 (없으면 418).
 - **indexergo**: 페이지 인라인 ECharts `option` JSON에서 첫 `series.data`를 균형 괄호 스캔으로 추출. 사이트의 `/ajaxMakeChart` POST 엔드포인트보다 정적 HTML 파싱이 안정적이라 그쪽 채택.
+
+## 확장 설계
+
+[지표·공시·뉴스 MCP 확장 설계](docs/design/03-market-data-mcp.md)는 금리·미국채·원유, 시점별 관측 저장, 관심기업 공시, 데이터 품질과 신규 도구 계약을 정의한다. 전체 목표 설계이며 현재 구현 범위는 아래 구현 상태 문서와 구분한다.
+
+## 오전·오후 브리핑용 데이터 (구현)
+
+`cp .env.example .env` 후 키를 입력한다. `.env`는 Git에서 제외된다.
+FRED 키가 있으면 공식 JSON API, 없으면 공개 CSV 경로를 사용한다.
+키는 서비스 내부에서만 읽고 MCP 응답이나 차트에 포함하지 않는다.
+
+```sh
+uv sync
+uv run python -m yummy_research_mcp.collect collect
+uv run python -m yummy_research_mcp.collect snapshot --as-of 2026-09-11T11:00:00Z
+uv run python -m yummy_research_mcp.collect chart --snapshot-id SNAPSHOT_ID --out state/chart.png
+uv run pytest
+# 기존 외부 사이트 접속 시험은 선택 실행
+YUMMY_LIVE_TESTS=1 uv run pytest tests/test_fetchers.py
+```
+
+추가 도구: `list_metrics`, `get_market_snapshot`, `get_metric_series`,
+`get_source_health`, `get_company_filings`, `search_company_news`.
+기존 4개 도구도 유지한다. 지표 일괄 갱신·차트 파일 작성은 운영 CLI에서 수행한다.
+
+- 기본 수집·브리핑: 미국채 3·10·30년, 실질 10년, 정책금리 상·하단/실효금리, WTI 현물 등 8개 지표. Brent·광의 달러지수는 정기 수집과 차트에서 제외하며 기존 이력의 명시적 조회만 지원한다.
+- 지표 SQLite: `state/market_data.db`. observations는 수정값을 수집 시각별 보관,
+  snapshots는 보고서 사용 시점의 고정 결과, health는 수집 성공·실패 이력의 최신 상태.
+- 과거 날짜 값을 오늘 처음 수집했다면 오늘부터 알려진 값으로 처리한다. 완전한 과거 시점 복원이나 ALFRED 전체 빈티지 구축은 아니다.
+- 금리 변화는 bp, 양수 가격 변화는 %. 비교 날짜를 반환한다. 일간 변동의 과거 분포 최소 120개가 있어야 주의 수준을 산출하며, 예측·매매 신호가 아니다.
+- 일별 값은 발표 지연이 있다. 관측일·최초 수집 시각을 구분하고 5일 초과 관측은 stale로 표시한다.
+- DART는 키 필요, SEC는 연락처 포함 User-Agent 필요. DART의 날짜 단위 검색은 장중 정확한 시각 필터를 보장하지 않는다.
+- 뉴스는 Google News RSS 제목 발견 기능. 기사 원문 검증·기업 식별·테마 인과 확인은 분석 단계에서 필요하며 전수 수집을 보장하지 않는다.
+
+실제 Telegram 운영 프로그램은 인접한 `yummy_research/`에서 실행된다.
+이 저장소는 데이터 MCP와 수집기만 버전 관리한다. 운영 연동과 남은 범위는
+[구현 상태](docs/implementation/status.md)를 참고한다.
